@@ -16,13 +16,19 @@ def save_to_file(responses, output_file):
 
 # Change your OpenAI chat model accordingly
 
-def call_openai_api(chunk):
+def call_openai_api(chunk, chat_history=None):
+    messages = [
+        {"role": "system", "content": "PASS IN ANY ARBITRARY SYSTEM VALUE TO GIVE THE AI AN IDENITY"}
+    ]
+    
+    if chat_history:
+        messages.extend(chat_history)
+
+    messages.append({"role": "user", "content": f"OPTIONAL PREPROMPTING FOLLOWING BY YOUR DATA TO PASS IN: {chunk}."})
+    
     response = openai.ChatCompletion.create(
         model="gpt-3.5-turbo",
-        messages=[
-            {"role": "system", "content": "PASS IN ANY ARBITRARY SYSTEM VALUE TO GIVE THE AI AN IDENITY"},
-            {"role": "user", "content": f"OPTIONAL PREPROMPTING FOLLOWING BY YOUR DATA TO PASS IN: {chunk}."},
-        ],
+        messages=messages,
         max_tokens=1750,
         n=1,
         stop=None,
@@ -38,10 +44,16 @@ def split_into_chunks(text, tokens=1500):
 def process_chunks(input_file, output_file):
     text = load_text(input_file)
     chunks = split_into_chunks(text)
+
+    chat_history = [
+        {"role": "user", "content": "Hello, how are you?"},
+        {"role": "assistant", "content": "I'm doing well, thank you! How can I help you today?"}
+    ]
     
     # Processes chunks in parallel
     with ThreadPoolExecutor() as executor:
-        responses = list(executor.map(call_openai_api, chunks))
+        # Use a lambda function to pass chat_history to call_openai_api
+        responses = list(executor.map(lambda chunk: call_openai_api(chunk, chat_history), chunks))
 
     save_to_file(responses, output_file)
 
